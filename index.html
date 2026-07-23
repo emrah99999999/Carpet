@@ -1,168 +1,667 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="fa" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🇬🇧 English Tutor</title>
+    <title>Color Analyzer Pro – تحلیل رنگ حرفه‌ای</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style>
+        :root {
+            --bg: #0a0a14;
+            --glass-bg: rgba(18, 18, 38, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --text: #e0e0f5;
+            --accent: #7b68ee;
+            --accent2: #48c9b0;
+            --radius: 18px;
+        }
+        * { margin:0; padding:0; box-sizing:border-box; }
         body {
-            font-family: Arial, sans-serif;
-            max-width: 500px;
-            margin: 0 auto;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: radial-gradient(circle at 30% 20%, #1a1a3a, #050510);
+            min-height: 100vh;
+            color: var(--text);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             padding: 20px;
-            background: #f0f8ff;
         }
-        h1 { text-align: center; color: #1e3a8a; }
-        #model-select {
-            width: 100%;
-            padding: 10px;
-            font-size: 16px;
-            margin-bottom: 15px;
+        .glass {
+            background: var(--glass-bg);
+            backdrop-filter: blur(18px);
+            -webkit-backdrop-filter: blur(18px);
+            border: 1px solid var(--glass-border);
+            border-radius: var(--radius);
+            box-shadow: 0 15px 45px rgba(0,0,0,0.6);
         }
-        #chat-box {
-            background: white;
-            border-radius: 10px;
-            padding: 15px;
-            min-height: 200px;
-            max-height: 400px;
-            overflow-y: auto;
-            border: 1px solid #ccc;
-            margin-bottom: 15px;
+        header {
+            width:100%; max-width:1400px; padding:18px 25px; margin-bottom:20px;
+            display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px;
         }
-        .user-msg { color: #2563eb; }
-        .ai-msg { color: #16a34a; }
-        button {
-            width: 100%;
-            padding: 15px;
-            font-size: 18px;
-            background: #2563eb;
-            color: white;
-            border: none;
-            border-radius: 50px;
-            cursor: pointer;
+        header h1 {
+            font-size:2rem; font-weight:700;
+            background: linear-gradient(135deg, #a78bfa, #48c9b0);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
         }
-        button:disabled {
-            background: #9ca3af;
+        .btn-group { display:flex; flex-wrap:wrap; gap:8px; }
+        .main-layout {
+            display:flex; width:100%; max-width:1400px; gap:22px; flex-wrap:wrap;
         }
-        .status { color: #6b7280; text-align: center; }
+        .canvas-panel { flex:2; min-width:320px; display:flex; flex-direction:column; gap:14px; }
+        .control-panel { flex:1; min-width:280px; display:flex; flex-direction:column; gap:18px; }
+        .upload-area {
+            padding:28px; text-align:center; cursor:pointer;
+            border:2px dashed rgba(255,255,255,0.15); transition:0.3s;
+        }
+        .upload-area:hover { border-color:var(--accent); background:rgba(123,104,238,0.08); }
+        .upload-area input { display:none; }
+        .canvas-container {
+            position:relative; width:100%; height:480px; border-radius:14px;
+            overflow:hidden; background:#03030a; box-shadow:inset 0 0 35px rgba(0,0,0,0.7);
+        }
+        canvas#displayCanvas {
+            position:absolute; top:0; left:0; width:100%; height:100%; cursor:grab;
+        }
+        canvas#displayCanvas:active { cursor:grabbing; }
+        .zoom-row {
+            display:flex; align-items:center; gap:10px; padding:10px 15px; flex-wrap:wrap;
+        }
+        button, .btn {
+            background:rgba(255,255,255,0.08); border:1px solid rgba(255,255,255,0.14);
+            color:var(--text); padding:9px 16px; border-radius:10px; cursor:pointer;
+            font-weight:600; transition:0.2s; backdrop-filter:blur(8px);
+            font-size:0.85rem; white-space:nowrap;
+        }
+        button:hover, .btn:hover { background:rgba(255,255,255,0.15); border-color:var(--accent); }
+        .btn.primary { background:var(--accent); border-color:var(--accent); color:white; }
+        .btn.primary:hover { background:#6a5acd; }
+        input[type="range"] { flex:1; accent-color:var(--accent); }
+        .resize-group { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+        .resize-group input {
+            width:75px; padding:7px; border-radius:8px; border:1px solid rgba(255,255,255,0.2);
+            background:rgba(0,0,0,0.4); color:white; text-align:center;
+        }
+        .palette-list {
+            max-height:280px; overflow-y:auto; padding:10px;
+            background:rgba(0,0,0,0.25); border-radius:12px;
+        }
+        .palette-item {
+            display:flex; align-items:center; gap:10px; padding:5px 0;
+            border-bottom:1px solid rgba(255,255,255,0.06); font-size:0.9rem;
+        }
+        .color-swatch {
+            width:20px; height:20px; border-radius:6px; border:1px solid rgba(255,255,255,0.3);
+        }
+        .progress { width:100%; height:5px; background:rgba(255,255,255,0.1); border-radius:3px; overflow:hidden; margin-top:8px; }
+        .progress-bar { height:100%; width:0%; background:var(--accent2); transition:width 0.3s; }
     </style>
 </head>
 <body>
-    <h1>🇬🇧 English Tutor</h1>
-    <select id="model-select">
-        <option value="Xenova/TinyLlama-1.1B-Chat-v1.0">TinyLlama (fast, 600MB)</option>
-        <option value="Xenova/gemma-2-2b-it" disabled>Gemma 2B (coming soon)</option>
-    </select>
-    <div id="chat-box"></div>
-    <p id="status" class="status">Loading model... please wait.</p>
-    <button id="speak-btn" disabled>🎤 Press & Speak English</button>
+    <header class="glass">
+        <h1>🎨 Color Analyzer Pro</h1>
+        <div class="btn-group">
+            <button id="saveSpecsPdf">💾 PDF مشخصات</button>
+            <button id="printSpecsPdf">🖨️ چاپ مشخصات</button>
+            <button class="btn primary" id="saveRowsPdf">💾 PDF ایندکس ردیف‌ها</button>
+            <button class="btn primary" id="printRowsPdf">🖨️ چاپ ردیف‌ها</button>
+            <button id="savePngBtn">🖼️ ذخیره PNG</button>
+            <button id="saveBmpBtn">🖼️ ذخیره BMP</button>
+        </div>
+    </header>
 
-    <script type="module">
-        // کتابخونه Transformers.js رو از اینترنت بارگیری می‌کنیم (فقط دفعه اول)
-        import { pipeline } from 'https://cdn.jsdelivr.net/npm/@xenova/transformers@2.17.2';
+    <div class="main-layout">
+        <div class="canvas-panel">
+            <div class="upload-area glass" id="uploadArea">
+                📁 عکس را اینجا بکشید یا کلیک کنید
+                <input type="file" id="fileInput" accept="image/*">
+            </div>
+            <div class="canvas-container" id="canvasContainer">
+                <canvas id="displayCanvas"></canvas>
+            </div>
+            <div class="zoom-row glass">
+                <button id="zoomOutBtn">🔍 −</button>
+                <input type="range" id="zoomSlider" min="0.1" max="10" step="0.1" value="1">
+                <button id="zoomInBtn">🔍 +</button>
+                <button id="fitBtn">📐 Fit</button>
+                <span id="zoomValue">100%</span>
+            </div>
+        </div>
 
-        const chatBox = document.getElementById('chat-box');
-        const statusDiv = document.getElementById('status');
-        const speakBtn = document.getElementById('speak-btn');
-        const modelSelect = document.getElementById('model-select');
+        <div class="control-panel">
+            <div class="glass" style="padding:16px;">
+                <h3 style="margin-bottom:10px;">📏 تغییر ابعاد</h3>
+                <div class="resize-group">
+                    <span>عرض:</span><input type="number" id="resizeWidth" min="1" value="800">
+                    <span>ارتفاع:</span><input type="number" id="resizeHeight" min="1" value="600">
+                    <button id="resizeBtn">اعمال</button>
+                </div>
+            </div>
+            <div class="glass" style="padding:16px;">
+                <h3 style="margin-bottom:10px;">🎛️ کاهش تعداد رنگ</h3>
+                <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                    <span>تعداد رنگ:</span>
+                    <input type="range" id="colorCountSlider" min="2" max="256" value="16" step="1">
+                    <span id="colorCountValue">16</span>
+                    <button class="btn primary" id="quantizeBtn">اعمال کاهش رنگ</button>
+                </div>
+                <div class="progress" id="progressContainer" style="display:none;">
+                    <div class="progress-bar" id="progressBar"></div>
+                </div>
+            </div>
+            <div class="glass" style="padding:16px; flex:1;">
+                <h3 style="margin-bottom:10px;">🌈 پالت رنگ (به ترتیب فراوانی)</h3>
+                <div class="palette-list" id="paletteList">
+                    <p style="opacity:0.6;">پس از کاهش رنگ ظاهر می‌شود.</p>
+                </div>
+            </div>
+        </div>
+    </div>
 
-        let generator = null;
-        let isListening = false;
+    <script>
+        (function() {
+            // DOM refs
+            const fileInput = document.getElementById('fileInput');
+            const uploadArea = document.getElementById('uploadArea');
+            const canvasContainer = document.getElementById('canvasContainer');
+            const displayCanvas = document.getElementById('displayCanvas');
+            const ctx = displayCanvas.getContext('2d', { alpha: false });
+            const zoomSlider = document.getElementById('zoomSlider');
+            const zoomValueSpan = document.getElementById('zoomValue');
+            const fitBtn = document.getElementById('fitBtn');
+            const zoomInBtn = document.getElementById('zoomInBtn');
+            const zoomOutBtn = document.getElementById('zoomOutBtn');
+            const resizeWidthInput = document.getElementById('resizeWidth');
+            const resizeHeightInput = document.getElementById('resizeHeight');
+            const resizeBtn = document.getElementById('resizeBtn');
+            const colorCountSlider = document.getElementById('colorCountSlider');
+            const colorCountValue = document.getElementById('colorCountValue');
+            const quantizeBtn = document.getElementById('quantizeBtn');
+            const paletteListDiv = document.getElementById('paletteList');
+            const progressContainer = document.getElementById('progressContainer');
+            const progressBar = document.getElementById('progressBar');
+            const saveSpecsPdf = document.getElementById('saveSpecsPdf');
+            const printSpecsPdf = document.getElementById('printSpecsPdf');
+            const saveRowsPdf = document.getElementById('saveRowsPdf');
+            const printRowsPdf = document.getElementById('printRowsPdf');
+            const savePngBtn = document.getElementById('savePngBtn');
+            const saveBmpBtn = document.getElementById('saveBmpBtn');
 
-        // آماده‌سازی تشخیص گفتار
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = new SpeechRecognition();
-        recognition.lang = 'en-US';
-        recognition.interimResults = false;
-        recognition.maxAlternatives = 1;
+            let originalImage = null;
+            let masterCanvas = document.createElement('canvas');
+            let masterCtx = masterCanvas.getContext('2d', { alpha: false });
+            let quantizedPalette = null;      // sorted {r,g,b,hex,count,index}
+            let quantizedIndices = null;      // Uint8Array (1‑based)
+            let quantizedWidth = 0, quantizedHeight = 0;
+            let currentScale = 1;
+            let offsetX = 0, offsetY = 0;
+            let isDragging = false;
+            let dragStartMouse = { x: 0, y: 0 };
+            let dragStartOffset = { x: 0, y: 0 };
 
-        // متن به صدا
-        const synth = window.speechSynthesis;
-
-        function speak(text) {
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'en-US';
-            utterance.rate = 0.9;
-            synth.speak(utterance);
-        }
-
-        // بارگذاری مدل بر اساس انتخاب
-        async function loadModel(modelName) {
-            statusDiv.textContent = 'Loading model... (this might take a minute the first time)';
-            speakBtn.disabled = true;
-            generator = await pipeline('text-generation', modelName);
-            statusDiv.textContent = 'Ready! Tap the button and speak.';
-            speakBtn.disabled = false;
-        }
-
-        // در شروع، مدل پیش‌فرض را بارگذاری کن
-        loadModel(modelSelect.value);
-
-        modelSelect.addEventListener('change', () => {
-            loadModel(modelSelect.value);
-        });
-
-        // دکمه ضبط صدا
-        speakBtn.addEventListener('click', () => {
-            if (isListening) return;
-            recognition.start();
-            isListening = true;
-            speakBtn.textContent = '🎧 Listening...';
-            statusDiv.textContent = 'Speak now...';
-        });
-
-        recognition.addEventListener('result', async (event) => {
-            const transcript = event.results[0][0].transcript;
-            addMessage('You', transcript, 'user-msg');
-            statusDiv.textContent = 'Thinking...';
-            recognition.stop();
-            isListening = false;
-            speakBtn.textContent = '🎤 Press & Speak English';
-
-            if (!generator) {
-                addMessage('System', 'Model not loaded yet.', 'ai-msg');
-                return;
+            function setMasterFromImage(img, w, h) {
+                masterCanvas.width = w;
+                masterCanvas.height = h;
+                masterCtx.clearRect(0, 0, w, h);
+                masterCtx.drawImage(img, 0, 0, w, h);
+                quantizedPalette = null;
+                quantizedIndices = null;
+                paletteListDiv.innerHTML = '<p style="opacity:0.6;">پس از کاهش رنگ ظاهر می‌شود.</p>';
+                fitImageToView();
+                renderCanvas();
             }
 
-            // پرامپت معلم انگلیسی
-            const prompt = `<|system|>
-You are a friendly English tutor and language partner.
-The user is a beginner. Speak simply, correct mistakes gently, encourage them. Always reply in English.</s>
-<|user|>
-${transcript}</s>
-<|assistant|>`;
+            function fitImageToView() {
+                if (masterCanvas.width === 0) return;
+                const cw = canvasContainer.clientWidth;
+                const ch = canvasContainer.clientHeight;
+                currentScale = Math.min(cw / masterCanvas.width, ch / masterCanvas.height, 1);
+                offsetX = 0; offsetY = 0;
+                zoomSlider.value = currentScale;
+                updateZoomLabel();
+                renderCanvas();
+            }
 
-            try {
-                const output = await generator(prompt, {
-                    max_new_tokens: 100,
-                    temperature: 0.7,
-                    do_sample: true,
+            function updateZoomLabel() {
+                zoomValueSpan.textContent = Math.round(currentScale * 100) + '%';
+                zoomSlider.value = currentScale;
+            }
+
+            function renderCanvas() {
+                if (masterCanvas.width === 0) return;
+                const dpr = window.devicePixelRatio || 1;
+                const cw = canvasContainer.clientWidth;
+                const ch = canvasContainer.clientHeight;
+                displayCanvas.width = cw * dpr;
+                displayCanvas.height = ch * dpr;
+                displayCanvas.style.width = cw + 'px';
+                displayCanvas.style.height = ch + 'px';
+                ctx.setTransform(1,0,0,1,0,0);
+                ctx.clearRect(0,0,displayCanvas.width,displayCanvas.height);
+                ctx.setTransform(dpr,0,0,dpr,0,0);
+                const sx = offsetX, sy = offsetY;
+                const sw = cw / currentScale, sh = ch / currentScale;
+                ctx.drawImage(masterCanvas, sx, sy, sw, sh, 0, 0, cw, ch);
+            }
+
+            function zoomToPoint(newScale, mx, my) {
+                const old = currentScale;
+                newScale = Math.min(10, Math.max(0.1, newScale));
+                const imgX = offsetX + mx / old;
+                const imgY = offsetY + my / old;
+                currentScale = newScale;
+                offsetX = imgX - mx / newScale;
+                offsetY = imgY - my / newScale;
+                updateZoomLabel();
+                renderCanvas();
+            }
+
+            canvasContainer.addEventListener('wheel', e => {
+                e.preventDefault();
+                const rect = displayCanvas.getBoundingClientRect();
+                const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+                zoomToPoint(currentScale * (e.deltaY < 0 ? 1.1 : 0.9), mx, my);
+            }, { passive: false });
+
+            canvasContainer.addEventListener('mousedown', e => {
+                isDragging = true;
+                dragStartMouse = { x: e.clientX, y: e.clientY };
+                dragStartOffset = { x: offsetX, y: offsetY };
+                displayCanvas.style.cursor = 'grabbing';
+            });
+            window.addEventListener('mousemove', e => {
+                if (!isDragging) return;
+                offsetX = dragStartOffset.x - (e.clientX - dragStartMouse.x) / currentScale;
+                offsetY = dragStartOffset.y - (e.clientY - dragStartMouse.y) / currentScale;
+                renderCanvas();
+            });
+            window.addEventListener('mouseup', () => { isDragging = false; displayCanvas.style.cursor = 'grab'; });
+
+            zoomSlider.addEventListener('input', () => {
+                currentScale = parseFloat(zoomSlider.value);
+                updateZoomLabel();
+                renderCanvas();
+            });
+            zoomInBtn.addEventListener('click', () => zoomToPoint(currentScale * 1.3, canvasContainer.clientWidth/2, canvasContainer.clientHeight/2));
+            zoomOutBtn.addEventListener('click', () => zoomToPoint(currentScale / 1.3, canvasContainer.clientWidth/2, canvasContainer.clientHeight/2));
+            fitBtn.addEventListener('click', fitImageToView);
+
+            // Touch
+            let touchStartDist = 0, touchStartScale = 1;
+            canvasContainer.addEventListener('touchstart', e => {
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    dragStartMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+                    dragStartOffset = { x: offsetX, y: offsetY };
+                } else if (e.touches.length === 2) {
+                    isDragging = false;
+                    touchStartDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                    touchStartScale = currentScale;
+                }
+            }, { passive: false });
+            canvasContainer.addEventListener('touchmove', e => {
+                e.preventDefault();
+                if (e.touches.length === 1 && isDragging) {
+                    offsetX = dragStartOffset.x - (e.touches[0].clientX - dragStartMouse.x) / currentScale;
+                    offsetY = dragStartOffset.y - (e.touches[0].clientY - dragStartMouse.y) / currentScale;
+                    renderCanvas();
+                } else if (e.touches.length === 2) {
+                    const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+                    const ns = touchStartScale * (dist / touchStartDist);
+                    const rect = displayCanvas.getBoundingClientRect();
+                    const mx = (e.touches[0].clientX + e.touches[1].clientX)/2 - rect.left;
+                    const my = (e.touches[0].clientY + e.touches[1].clientY)/2 - rect.top;
+                    zoomToPoint(ns, mx, my);
+                }
+            }, { passive: false });
+            canvasContainer.addEventListener('touchend', () => { isDragging = false; });
+
+            // Image upload
+            uploadArea.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', e => { if (e.target.files.length) handleFile(e.target.files[0]); });
+            uploadArea.addEventListener('dragover', e => { e.preventDefault(); uploadArea.style.borderColor='#7b68ee'; });
+            uploadArea.addEventListener('dragleave', () => { uploadArea.style.borderColor = 'rgba(255,255,255,0.15)'; });
+            uploadArea.addEventListener('drop', e => {
+                e.preventDefault();
+                uploadArea.style.borderColor = 'rgba(255,255,255,0.15)';
+                if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+            });
+            function handleFile(file) {
+                if (!file.type.startsWith('image/')) return;
+                const reader = new FileReader();
+                reader.onload = ev => {
+                    const img = new Image();
+                    img.onload = () => {
+                        originalImage = img;
+                        resizeWidthInput.value = img.width;
+                        resizeHeightInput.value = img.height;
+                        setMasterFromImage(img, img.width, img.height);
+                    };
+                    img.src = ev.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+
+            // Resize
+            resizeBtn.addEventListener('click', () => {
+                if (!originalImage) return alert('ابتدا عکس بارگذاری کنید.');
+                const w = parseInt(resizeWidthInput.value) || 100;
+                const h = parseInt(resizeHeightInput.value) || 100;
+                if (w < 1 || h < 1) return;
+                setMasterFromImage(originalImage, w, h);
+            });
+
+            // Quantization
+            colorCountSlider.addEventListener('input', () => colorCountValue.textContent = colorCountSlider.value);
+            function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+            async function quantizeImage(k) {
+                const w = masterCanvas.width, h = masterCanvas.height;
+                const imageData = masterCtx.getImageData(0,0,w,h);
+                const pixels = imageData.data;
+                const totalPixels = w * h;
+                const sampleStep = Math.max(1, Math.floor(totalPixels / 5000));
+                const samples = [];
+                for (let i = 0; i < totalPixels; i += sampleStep) {
+                    const idx = i * 4;
+                    samples.push({ r: pixels[idx], g: pixels[idx+1], b: pixels[idx+2] });
+                }
+                const centroids = [];
+                centroids.push(samples[Math.floor(Math.random() * samples.length)]);
+                while (centroids.length < k) {
+                    const dists = samples.map(s => {
+                        let minD = Infinity;
+                        for (const c of centroids) {
+                            const dr = s.r-c.r, dg = s.g-c.g, db = s.b-c.b;
+                            const d = dr*dr + dg*dg + db*db;
+                            if (d < minD) minD = d;
+                        }
+                        return minD;
+                    });
+                    const sum = dists.reduce((a,b)=>a+b,0);
+                    let rand = Math.random() * sum;
+                    for (let i=0; i<samples.length; i++) {
+                        rand -= dists[i];
+                        if (rand <= 0) { centroids.push(samples[i]); break; }
+                    }
+                }
+                for (let iter = 0; iter < 15; iter++) {
+                    const clusters = Array.from({length:k}, ()=>[]);
+                    for (const s of samples) {
+                        let minD = Infinity, best = 0;
+                        for (let j=0; j<k; j++) {
+                            const dr = s.r-centroids[j].r, dg = s.g-centroids[j].g, db = s.b-centroids[j].b;
+                            const d = dr*dr + dg*dg + db*db;
+                            if (d < minD) { minD = d; best = j; }
+                        }
+                        clusters[best].push(s);
+                    }
+                    let changed = false;
+                    for (let j=0; j<k; j++) {
+                        if (clusters[j].length === 0) continue;
+                        const avgR = clusters[j].reduce((a,c)=>a+c.r,0)/clusters[j].length;
+                        const avgG = clusters[j].reduce((a,c)=>a+c.g,0)/clusters[j].length;
+                        const avgB = clusters[j].reduce((a,c)=>a+c.b,0)/clusters[j].length;
+                        const nc = { r: Math.round(avgR), g: Math.round(avgG), b: Math.round(avgB) };
+                        if (nc.r !== centroids[j].r || nc.g !== centroids[j].g || nc.b !== centroids[j].b) changed = true;
+                        centroids[j] = nc;
+                    }
+                    if (!changed) break;
+                }
+                const counts = new Array(k).fill(0);
+                const indices = new Uint8Array(totalPixels);
+                progressBar.style.width = '0%';
+                progressContainer.style.display = 'block';
+                for (let y = 0; y < h; y++) {
+                    for (let x = 0; x < w; x++) {
+                        const idx = (y*w + x)*4;
+                        const r = pixels[idx], g = pixels[idx+1], b = pixels[idx+2];
+                        let minD = Infinity, best = 0;
+                        for (let j=0; j<k; j++) {
+                            const dr = r-centroids[j].r, dg = g-centroids[j].g, db = b-centroids[j].b;
+                            const d = dr*dr + dg*dg + db*db;
+                            if (d < minD) { minD = d; best = j; }
+                        }
+                        indices[y*w + x] = best;
+                        counts[best]++;
+                    }
+                    if (y % 10 === 0) {
+                        progressBar.style.width = ((y/h)*100) + '%';
+                        await sleep(0);
+                    }
+                }
+                progressBar.style.width = '100%';
+                const indexed = centroids.map((c,i)=>({...c, count: counts[i], origIdx: i}));
+                indexed.sort((a,b)=> b.count - a.count);
+                const newIdxMap = new Array(k);
+                indexed.forEach((item, newIdx) => { newIdxMap[item.origIdx] = newIdx + 1; });
+                for (let i=0; i<totalPixels; i++) indices[i] = newIdxMap[indices[i]];
+                const palette = indexed.map((item, idx)=>({
+                    r:item.r, g:item.g, b:item.b,
+                    hex: '#' + [item.r,item.g,item.b].map(c=>c.toString(16).padStart(2,'0')).join(''),
+                    count: item.count, index: idx+1
+                }));
+                const newData = masterCtx.createImageData(w,h);
+                for (let i=0; i<totalPixels; i++) {
+                    const col = palette[indices[i]-1];
+                    const j = i*4;
+                    newData.data[j]=col.r; newData.data[j+1]=col.g; newData.data[j+2]=col.b; newData.data[j+3]=255;
+                }
+                masterCtx.putImageData(newData,0,0);
+                progressContainer.style.display = 'none';
+                return { palette, indices };
+            }
+
+            quantizeBtn.addEventListener('click', async () => {
+                if (masterCanvas.width === 0) return alert('عکسی بارگذاری نشده.');
+                const k = parseInt(colorCountSlider.value);
+                quantizeBtn.disabled = true; quantizeBtn.textContent = 'در حال پردازش...';
+                try {
+                    const res = await quantizeImage(k);
+                    quantizedPalette = res.palette;
+                    quantizedIndices = res.indices;
+                    quantizedWidth = masterCanvas.width;
+                    quantizedHeight = masterCanvas.height;
+                    renderPalette();
+                    renderCanvas();
+                } catch (err) {
+                    alert('خطا: ' + err.message);
+                } finally {
+                    quantizeBtn.disabled = false; quantizeBtn.textContent = 'اعمال کاهش رنگ';
+                }
+            });
+
+            function renderPalette() {
+                if (!quantizedPalette) return;
+                paletteListDiv.innerHTML = quantizedPalette.map(p => `
+                    <div class="palette-item">
+                        <div class="color-swatch" style="background:${p.hex};"></div>
+                        <span>${p.index}</span>
+                        <span style="font-family:monospace;">${p.hex}</span>
+                        <span style="margin-right:auto;">${p.count.toLocaleString()} px</span>
+                    </div>
+                `).join('');
+            }
+
+            // PDF specs
+            function generateSpecsPdf() {
+                if (!quantizedPalette) return alert('ابتدا کاهش رنگ انجام دهید.');
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                let y = 20;
+                doc.setFontSize(18); doc.text('Image Color Specifications', 20, y); y+=12;
+                doc.setFontSize(11);
+                doc.text(`Dimensions: ${quantizedWidth} x ${quantizedHeight} px`, 20, y); y+=7;
+                doc.text(`Number of Colors: ${quantizedPalette.length}`, 20, y); y+=10;
+                doc.setFontSize(10);
+                quantizedPalette.forEach(p => {
+                    if (y > 270) { doc.addPage(); y=20; }
+                    doc.setFillColor(p.r, p.g, p.b);
+                    doc.rect(25, y-4, 6, 6, 'F');
+                    doc.text(`${p.index}`, 45, y);
+                    doc.text(p.hex, 65, y);
+                    doc.text(`${p.count.toLocaleString()} px`, 120, y);
+                    y += 8;
                 });
-                const generatedText = output[0].generated_text;
-                // فقط بخش پاسخ دستیار رو دربیار
-                const assistantReply = generatedText.split('<|assistant|>').pop().trim();
-                addMessage('Tutor', assistantReply, 'ai-msg');
-                speak(assistantReply);
-                statusDiv.textContent = 'Ready.';
-            } catch (error) {
-                addMessage('System', 'Sorry, an error occurred.', 'ai-msg');
-                statusDiv.textContent = 'Error. Please refresh.';
+                return doc;
             }
-        });
+            saveSpecsPdf.addEventListener('click', () => {
+                const doc = generateSpecsPdf(); if (doc) doc.save('color-specs.pdf');
+            });
+            printSpecsPdf.addEventListener('click', () => {
+                const doc = generateSpecsPdf();
+                if (doc) { const blob = doc.output('blob'); window.open(URL.createObjectURL(blob))?.print(); }
+            });
 
-        recognition.addEventListener('error', (event) => {
-            addMessage('System', 'Microphone error: ' + event.error, 'ai-msg');
-            isListening = false;
-            speakBtn.textContent = '🎤 Press & Speak English';
-        });
+            // PDF rows with real superscript
+            function generateRowsPdf() {
+                if (!quantizedIndices || !quantizedPalette) return alert('ابتدا کاهش رنگ انجام دهید.');
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+                const pageW = doc.internal.pageSize.getWidth();
+                const pageH = doc.internal.pageSize.getHeight();
+                const margin = 15;
+                const maxLineWidth = pageW - margin * 2;
+                let y = margin;
+                const lineHeight = 5.5;
+                const baseFontSize = 9;
+                const superFontSize = 6;
+                const superRise = 2.5;
 
-        function addMessage(sender, text, cssClass) {
-            const p = document.createElement('p');
-            p.className = cssClass;
-            p.textContent = `${sender}: ${text}`;
-            chatBox.appendChild(p);
-            chatBox.scrollTop = chatBox.scrollHeight;
-        }
+                function drawSuperscriptRow(textPieces, startX, startY) {
+                    // pieces: array of {type:'text', val:string} or {type:'power', base:string, exp:string}
+                    let x = startX;
+                    doc.setFontSize(baseFontSize);
+                    doc.setTextRise(0);
+                    for (const piece of textPieces) {
+                        if (piece.type === 'text') {
+                            const w = doc.getTextWidth(piece.val);
+                            if (x + w > pageW - margin) { y += lineHeight; x = margin; }
+                            doc.text(piece.val, x, y);
+                            x += w;
+                        } else if (piece.type === 'power') {
+                            const baseW = doc.getTextWidth(piece.base);
+                            if (x + baseW > pageW - margin) { y += lineHeight; x = margin; }
+                            doc.text(piece.base, x, y);
+                            const baseEndX = x + baseW;
+                            // draw superscript
+                            doc.setFontSize(superFontSize);
+                            doc.setTextRise(superRise);
+                            const expW = doc.getTextWidth(piece.exp);
+                            doc.text(piece.exp, baseEndX + 0.5, y);
+                            doc.setTextRise(0);
+                            doc.setFontSize(baseFontSize);
+                            x = baseEndX + expW + 1.2;
+                        }
+                    }
+                }
+
+                function dottedLine() {
+                    if (y + 2 > pageH - margin) { doc.addPage(); y = margin; }
+                    doc.setDrawColor(150);
+                    doc.line(margin, y, pageW - margin, y);
+                    y += 3;
+                }
+
+                const w = quantizedWidth, h = quantizedHeight;
+                for (let row = h - 1; row >= 0; row--) {
+                    const rowNumber = h - row;
+                    const header = `Row ${rowNumber}: `;
+                    const pieces = [{ type: 'text', val: header }];
+                    let x = 0;
+                    while (x < w) {
+                        const idx = quantizedIndices[row * w + x];
+                        let count = 1;
+                        while (x + count < w && quantizedIndices[row * w + x + count] === idx) count++;
+                        if (count === 1) {
+                            pieces.push({ type: 'text', val: `${idx}` });
+                        } else if (count === 2) {
+                            pieces.push({ type: 'text', val: `${idx}-${idx}` });
+                        } else {
+                            pieces.push({ type: 'power', base: `${idx}`, exp: `${count}` });
+                        }
+                        if (x + count < w) pieces.push({ type: 'text', val: '-' });
+                        x += count;
+                    }
+                    // Remove trailing dash if present
+                    if (pieces[pieces.length-1]?.val === '-') pieces.pop();
+                    drawSuperscriptRow(pieces, margin, y);
+                    y += lineHeight;
+                    dottedLine();
+                }
+                return doc;
+            }
+
+            saveRowsPdf.addEventListener('click', () => {
+                const doc = generateRowsPdf(); if (doc) doc.save('row-indices.pdf');
+            });
+            printRowsPdf.addEventListener('click', () => {
+                const doc = generateRowsPdf();
+                if (doc) { const blob = doc.output('blob'); window.open(URL.createObjectURL(blob))?.print(); }
+            });
+
+            // Save PNG / BMP
+            savePngBtn.addEventListener('click', () => {
+                if (masterCanvas.width === 0) return alert('عکسی موجود نیست.');
+                masterCanvas.toBlob(blob => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url; a.download = 'image.png'; a.click();
+                }, 'image/png');
+            });
+
+            function canvasToBMP(canvas) {
+                const w = canvas.width, h = canvas.height;
+                const ctx = canvas.getContext('2d');
+                const imgData = ctx.getImageData(0,0,w,h).data;
+                const rowSize = Math.floor((w * 3 + 3) / 4) * 4;
+                const pixelArraySize = rowSize * h;
+                const fileSize = 54 + pixelArraySize;
+                const buffer = new ArrayBuffer(fileSize);
+                const dv = new DataView(buffer);
+                // BMP header
+                dv.setUint8(0, 0x42); dv.setUint8(1, 0x4D); // "BM"
+                dv.setUint32(2, fileSize, true);
+                dv.setUint32(6, 0, true);
+                dv.setUint32(10, 54, true);
+                // DIB header (BITMAPINFOHEADER)
+                dv.setUint32(14, 40, true);
+                dv.setInt32(18, w, true);
+                dv.setInt32(22, -h, true); // top-down
+                dv.setUint16(26, 1, true);
+                dv.setUint16(28, 24, true);
+                dv.setUint32(30, 0, true);
+                dv.setUint32(34, pixelArraySize, true);
+                dv.setInt32(38, 2835, true); // 72 DPI
+                dv.setInt32(42, 2835, true);
+                dv.setUint32(46, 0, true);
+                dv.setUint32(50, 0, true);
+                // pixel data (BGR, bottom-up is handled by negative height)
+                const rowBytes = new Uint8Array(buffer, 54);
+                for (let y = 0; y < h; y++) {
+                    const rowOffset = y * rowSize;
+                    for (let x = 0; x < w; x++) {
+                        const idx = (y * w + x) * 4;
+                        const pos = rowOffset + x * 3;
+                        rowBytes[pos] = imgData[idx+2];     // B
+                        rowBytes[pos+1] = imgData[idx+1];   // G
+                        rowBytes[pos+2] = imgData[idx];     // R
+                    }
+                    // padding already zero because buffer initialized to 0
+                }
+                return new Blob([buffer], { type: 'image/bmp' });
+            }
+
+            saveBmpBtn.addEventListener('click', () => {
+                if (masterCanvas.width === 0) return alert('عکسی موجود نیست.');
+                const blob = canvasToBMP(masterCanvas);
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url; a.download = 'image.bmp'; a.click();
+            });
+
+            // Resize observer for canvas container
+            new ResizeObserver(() => { if (masterCanvas.width) renderCanvas(); }).observe(canvasContainer);
+            fitImageToView();
+        })();
     </script>
 </body>
 </html>
